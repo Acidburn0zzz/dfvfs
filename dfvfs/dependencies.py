@@ -19,7 +19,7 @@ else:
 # module_name: minimum_version
 LIBYAL_DEPENDENCIES = {
     u'pybde': 20140531,
-    u'pyewf': 20131210,
+    u'pyewf': 20160424,
     u'pyfsntfs': 20150823,
     u'pyqcow': 20131204,
     u'pysigscan': 20150627,
