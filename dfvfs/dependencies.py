@@ -24,7 +24,7 @@ LIBYAL_DEPENDENCIES = {
     u'pyqcow': 20131204,
     u'pysigscan': 20150627,
     u'pysmdev': 20140428,
-    u'pysmraw': 20140612,
+    u'pysmraw': 20160424,
     u'pyvhdi': 20131210,
     u'pyvmdk': 20140421,
     u'pyvshadow': 20160110,

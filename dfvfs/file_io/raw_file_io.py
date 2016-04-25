@@ -71,25 +71,28 @@ class RawFile(file_object_io.FileObjectIO):
     file_system = resolver.Resolver.OpenFileSystem(
         parent_path_spec, resolver_context=self._resolver_context)
 
-    # Note that we cannot use pysmraw's glob function since it does not
-    # handle the file system abstraction dfvfs provides.
-    segment_file_path_specs = raw.RawGlobPathSpec(file_system, path_spec)
-    if not segment_file_path_specs:
-      return
+    raw_handle = pysmraw.handle()
 
     if parent_path_spec.IsSystemLevel():
-      # Typically the file-like object cache should have room for 127 items.
-      self._resolver_context.SetMaximumNumberOfFileObjects(
-          len(segment_file_path_specs) + 127)
+      # Have pysmraw deal with the maximum number of open files.
+      filenames = pysmraw.glob(parent_path_spec.location)
+      raw_handle.open(filenames)
 
-    file_objects = []
-    for segment_file_path_spec in segment_file_path_specs:
-      file_object = resolver.Resolver.OpenFileObject(
-          segment_file_path_spec, resolver_context=self._resolver_context)
-      file_objects.append(file_object)
+    else:
+      # Note that we cannot use pysmraw's glob function here since it does not
+      # handle the file system abstraction dfvfs provides.
+      segment_file_path_specs = raw.RawGlobPathSpec(file_system, path_spec)
+      if not segment_file_path_specs:
+        return
 
-    raw_handle = pysmraw.handle()
-    raw_handle.open_file_objects(file_objects)
+      file_objects = []
+      for segment_file_path_spec in segment_file_path_specs:
+        file_object = resolver.Resolver.OpenFileObject(
+            segment_file_path_spec, resolver_context=self._resolver_context)
+        file_objects.append(file_object)
+
+      raw_handle.open_file_objects(file_objects)
+
     return raw_handle
 
   def get_size(self):
