@@ -15,8 +15,8 @@ from tests.encryption import test_lib
 class AESDecrypterTestCase(test_lib.DecrypterTestCase):
   """Tests for the AES decrypter object."""
 
-  _AES_INITIALIZATION_VECTOR = 'This is an IV456'
-  _AES_KEY = 'This is a key123'
+  _AES_INITIALIZATION_VECTOR = b'This is an IV456'
+  _AES_KEY = b'This is a key123'
 
   def testInitialization(self):
     """Tests the initialization method."""
@@ -43,11 +43,17 @@ class AESDecrypterTestCase(test_lib.DecrypterTestCase):
       aes_decrypter.AESDecrypter(
           cipher_mode=definitions.ENCRYPTION_MODE_ECB, key='Wrong key size')
 
+    # Test incorrect initialization vector type.
+    with self.assertRaises(TypeError):
+      aes_decrypter.AESDecrypter(
+          cipher_mode=definitions.ENCRYPTION_MODE_CBC,
+          initialization_vector='Wrong IV type', key=self._AES_KEY)
+
     # Test incorrect initialization vector size.
     with self.assertRaises(ValueError):
       aes_decrypter.AESDecrypter(
           cipher_mode=definitions.ENCRYPTION_MODE_CBC,
-          initialization_vector='Wrong IV size', key=self._AES_KEY)
+          initialization_vector=b'Wrong IV size', key=self._AES_KEY)
 
   def testDecrypt(self):
     """Tests the Decrypt method."""
