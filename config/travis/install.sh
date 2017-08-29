@@ -4,11 +4,11 @@
 
 COVERALL_DEPENDENCIES="python-coverage python-coveralls python-docopt";
 
-L2TBINARIES_DEPENDENCIES="construct dfdatetime libbde libewf libfsntfs libfvde libfwnt libqcow libsigscan libsmdev libsmraw libvhdi libvmdk libvshadow libvslvm lzma pycrypto pysqlite pytsk3 six";
+L2TBINARIES_DEPENDENCIES="asn1crypto cffi construct cryptography dfdatetime enum34 idna ipaddress libbde libewf libfsntfs libfvde libfwnt libqcow libsigscan libsmdev libsmraw libvhdi libvmdk libvshadow libvslvm lzma pysqlite pytsk3 six";
 
 L2TBINARIES_TEST_DEPENDENCIES="funcsigs mock pbr";
 
-PYTHON2_DEPENDENCIES="libbde-python libewf-python libfsntfs-python libfvde-python libfwnt-python libqcow-python libsigscan-python libsmdev-python libsmraw-python libvhdi-python libvmdk-python libvshadow-python libvslvm-python python-backports.lzma python-construct python-crypto python-dfdatetime python-pysqlite python-pytsk3 python-six";
+PYTHON2_DEPENDENCIES="libbde-python libewf-python libfsntfs-python libfvde-python libfwnt-python libqcow-python libsigscan-python libsmdev-python libsmraw-python libvhdi-python libvmdk-python libvshadow-python libvslvm-python python-asn1crypto python-backports.lzma python-cffi python-construct python-cryptography python-dfdatetime python-enum34 python-idna python-ipaddress python-pysqlite python-pytsk3 python-six";
 
 PYTHON2_TEST_DEPENDENCIES="python-mock python-tox";
 
@@ -22,7 +22,7 @@ then
 	mv l2tdevtools ../;
 	mkdir dependencies;
 
-	PYTHONPATH=../l2tdevtools ../l2tdevtools/tools/update.py --download-directory=dependencies ${L2TBINARIES_DEPENDENCIES} ${L2TBINARIES_TEST_DEPENDENCIES};
+	PYTHONPATH=../l2tdevtools ../l2tdevtools/tools/update.py --download-directory dependencies --track dev ${L2TBINARIES_DEPENDENCIES} ${L2TBINARIES_TEST_DEPENDENCIES};
 
 elif test ${TRAVIS_OS_NAME} = "linux";
 then

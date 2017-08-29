@@ -1,7 +1,13 @@
 pip >= 7.0.0
+asn1crypto >= 0.22.0
 backports.lzma
+cffi >= 1.9.1
 construct >= 2.5.2,<= 2.5.3
+cryptography >= 2.0.2
 dfdatetime >= 20160814
+enum34 >= 1.1.6 ; python_version < '3.0'
+idna >= 2.5
+ipaddress >= 1.0.16 ; python_version < '3.0'
 libbde-python >= 20140531
 libewf-python >= 20131210
 libfsntfs-python >= 20151130
@@ -15,6 +21,5 @@ libvhdi-python >= 20131210
 libvmdk-python >= 20140421
 libvshadow-python >= 20160109
 libvslvm-python >= 20160109
-pycrypto >= 2.6.0
 pytsk3 >= 20160721
 six >= 1.1.0
