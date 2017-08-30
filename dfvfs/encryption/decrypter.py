@@ -42,8 +42,8 @@ class Decrypter(object):
     """
 
 
-class CryptographyDecrypter(Decrypter):
-  """Decrypter using Cryptography."""
+class CryptographyBlockCipherDecrypter(Decrypter):
+  """Block cipher decrypter using Cryptography."""
 
   def __init__(
       self, algorithm=None, cipher_mode=None, initialization_vector=None,
@@ -73,9 +73,9 @@ class CryptographyDecrypter(Decrypter):
       mode = modes.OFB(initialization_vector)
 
     backend = backends.default_backend()
-    cipher = ciphers.Cipher(algorithm, mode, backend=backend)
+    cipher = ciphers.Cipher(algorithm, mode=mode, backend=backend)
 
-    super(CryptographyDecrypter, self).__init__()
+    super(CryptographyBlockCipherDecrypter, self).__init__()
     self._algorithm = algorithm
     self._cipher_context = cipher.decryptor()
 

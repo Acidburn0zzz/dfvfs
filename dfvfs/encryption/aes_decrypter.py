@@ -10,7 +10,7 @@ from dfvfs.encryption import manager
 from dfvfs.lib import definitions
 
 
-class AESDecrypter(decrypter.CryptographyDecrypter):
+class AESDecrypter(decrypter.CryptographyBlockCipherDecrypter):
   """AES decrypter using Cryptography."""
 
   ENCRYPTION_METHOD = definitions.ENCRYPTION_METHOD_AES
