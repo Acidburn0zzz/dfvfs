@@ -79,6 +79,7 @@ class CryptographyBlockCipherDecrypter(Decrypter):
     self._algorithm = algorithm
     self._cipher_context = cipher.decryptor()
 
+  # pylint: disable=arguments-differ
   def Decrypt(self, encrypted_data, finalize=False):
     """Decrypts the encrypted data.
 

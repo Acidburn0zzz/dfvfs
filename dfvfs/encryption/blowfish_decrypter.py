@@ -43,7 +43,7 @@ class BlowfishDecrypter(decrypter.CryptographyBlockCipherDecrypter):
     algorithm = algorithms.Blowfish(key)
 
     super(BlowfishDecrypter, self).__init__(
-        algorithm=algorithm, cipher_mode=cipher_mode, 
+        algorithm=algorithm, cipher_mode=cipher_mode,
         initialization_vector=initialization_vector, **kwargs)
 
 
