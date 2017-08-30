@@ -63,11 +63,14 @@ class AESDecrypterTestCase(test_lib.DecrypterTestCase):
         key=self._AES_KEY)
 
     # Test full decryption.
-    decrypted_data, _ = decrypter.Decrypt(
-        b'2|\x7f\xd7\xff\xbay\xf9\x95?\x81\xc7\xaafV\xceB\x01\xdb8E7\xfe'
-        b'\x92j\xf0\x1d(\xb9\x9f\xad\x13')
     expected_decrypted_data = b'This is secret encrypted text!!!'
-    self.assertEqual(expected_decrypted_data, decrypted_data)
+
+    decrypted_data, remaining_encrypted_data = decrypter.Decrypt(
+        b'2|\x7f\xd7\xff\xbay\xf9\x95?\x81\xc7\xaafV\xceB\x01\xdb8E7\xfe'
+        b'\x92j\xf0\x1d(\xb9\x9f\xad\x13', finalize=True)
+
+    self.assertEqual(decrypted_data, expected_decrypted_data)
+    self.assertEqual(remaining_encrypted_data, b'')
 
     # Reset decrypter.
     decrypter = aes_decrypter.AESDecrypter(
@@ -76,19 +79,13 @@ class AESDecrypterTestCase(test_lib.DecrypterTestCase):
         key=self._AES_KEY)
 
     # Test partial decryption.
-    decrypted_data, encrypted_data = decrypter.Decrypt(
+    partial_encrypted_data = (
         b'2|\x7f\xd7\xff\xbay\xf9\x95?\x81\xc7\xaafV\xceB\x01\xdb8E7\xfe')
-    expected_decrypted_data = b'This is secret e'
-    expected_encrypted_data = b'B\x01\xdb8E7\xfe'
-    self.assertEqual(expected_decrypted_data, decrypted_data)
-    self.assertEqual(expected_encrypted_data, encrypted_data)
 
-    decrypted_data, encrypted_data = decrypter.Decrypt(
-        b'B\x01\xdb8E7\xfe\x92j\xf0\x1d(\xb9\x9f\xad\x13')
-    expected_decrypted_data = b'ncrypted text!!!'
-    expected_encrypted_data = b''
-    self.assertEqual(expected_decrypted_data, decrypted_data)
-    self.assertEqual(expected_encrypted_data, encrypted_data)
+    decrypted_data, remaining_encrypted_data = decrypter.Decrypt(
+        partial_encrypted_data)
+    self.assertEqual(decrypted_data, b'')
+    self.assertEqual(remaining_encrypted_data, partial_encrypted_data)
 
 
 if __name__ == '__main__':
