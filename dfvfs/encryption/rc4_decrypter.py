@@ -38,7 +38,7 @@ class RC4Decrypter(decrypter.Decrypter):
     super(RC4Decrypter, self).__init__(**kwargs)
     self._cipher_context = cipher.decryptor()
 
-  def Decrypt(self, encrypted_data):
+  def Decrypt(self, encrypted_data, **kwargs):
     """Decrypts the encrypted data.
 
     Args:

@@ -31,14 +31,16 @@ class Decrypter(object):
     super(Decrypter, self).__init__()
 
   @abc.abstractmethod
-  def Decrypt(self, encrypted_data):
+  def Decrypt(self, encrypted_data, finalize=False):
     """Decrypts the encrypted data.
 
     Args:
       encrypted_data (bytes): encrypted data.
+      finalize (Optional[bool]): True if the end of data has been reached and
+          the cipher context should be finalized.
 
     Returns:
-      tuple[bytes,bytes]: decrypted data and remaining encrypted data.
+      tuple[bytes, bytes]: decrypted data and remaining encrypted data.
     """
 
 
@@ -79,13 +81,13 @@ class CryptographyBlockCipherDecrypter(Decrypter):
     self._algorithm = algorithm
     self._cipher_context = cipher.decryptor()
 
-  # pylint: disable=arguments-differ
   def Decrypt(self, encrypted_data, finalize=False):
     """Decrypts the encrypted data.
 
     Args:
       encrypted_data (bytes): encrypted data.
-      finalize (Optional[bool]): True if the cipher context should be finalized.
+      finalize (Optional[bool]): True if the end of data has been reached and
+          the cipher context should be finalized.
 
     Returns:
       tuple[bytes, bytes]: decrypted data and remaining encrypted data.
