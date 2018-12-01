@@ -18,6 +18,32 @@ from dfvfs.volume import tsk_volume_system
 from dfvfs.volume import vshadow_volume_system
 
 
+class VolumeScannerOptions(object):
+  """Volume scanner options.
+
+  Attribute:
+    partitions (list[str]): partition identifiers.
+    scan_vss (bool): True if VSS should be scanned.
+    scan_vss_snapshots_only (bool): True if only snapshots of a VSS should be
+        scanned and not the current volume.
+  """
+
+  def __init__(self):
+    """Initializes volume scanner options."""
+    super(VolumeScannerOptions, self).__init__()
+    self.partitions = []
+    self.scan_vss = True
+    self.scan_vss_snapshots_only = False
+
+  def DoScanVSS(self):
+    """Determines if VSS needs to be scanned.
+
+    Returns:
+      bool: True if VSS needs to be scanned.
+    """
+    return self.scan_vss
+
+
 class VolumeScannerMediator(object):
   """Volume scanner mediator."""
 
@@ -143,11 +169,16 @@ class VolumeScanner(object):
     return self._NormalizedVolumeIdentifiers(
         volume_system, volume_identifiers, prefix='apfs')
 
-  def _GetTSKPartitionIdentifiers(self, scan_node):
+  def _GetTSKPartitionIdentifiers(self, scan_node, options):
     """Determines the TSK partition identifiers.
+
+    This function determines which TSK partition identifiers need to be scanned
+    based on the volume scanner options. If no options are provided and there
+    is more than a single partition the mediator is used to ask the user.
 
     Args:
       scan_node (SourceScanNode): scan node.
+      options (VolumeScannerOptions): volume scanner options.
 
     Returns:
       list[str]: TSK partition identifiers.
@@ -169,13 +200,25 @@ class VolumeScanner(object):
     if not volume_identifiers:
       return []
 
+    if options.partitions:
+      if options.partitions == ['all']:
+        partitions = range(1, volume_system.number_of_volumes + 1)
+      else:
+        partitions = options.partitions
+
+      selected_volumes = self._NormalizedVolumeIdentifiers(
+          volume_system, partitions, prefix='p')
+
+      if not set(selected_volumes).difference(volume_identifiers):
+        return selected_volumes
+
     if len(volume_identifiers) == 1:
       return volume_identifiers
 
     if not self._mediator:
       raise errors.ScannerError(
-          'Unable to proceed. Partitions found but no mediator to determine '
-          'how they should be used.')
+          'Unable to proceed. More than one partitions found but no mediator '
+          'to determine how they should be used.')
 
     try:
       volume_identifiers = self._mediator.GetPartitionIdentifiers(
@@ -278,12 +321,14 @@ class VolumeScanner(object):
 
     base_path_specs.append(file_system_scan_node.path_spec)
 
-  def _ScanVolume(self, scan_context, volume_scan_node, base_path_specs):
+  def _ScanVolume(
+      self, scan_context, volume_scan_node, options, base_path_specs):
     """Scans the volume scan node for volume and file systems.
 
     Args:
       scan_context (SourceScannerContext): source scanner context.
       volume_scan_node (SourceScanNode): volume scan node.
+      options (VolumeScannerOptions): volume scanner options.
       base_path_specs (list[PathSpec]): file system base path specifications.
 
     Raises:
@@ -298,15 +343,17 @@ class VolumeScanner(object):
     sub_scan_nodes = volume_scan_node.sub_nodes or [volume_scan_node]
 
     for sub_scan_node in sub_scan_nodes:
-      self._ScanVolumeScanNode(scan_context, sub_scan_node, base_path_specs)
+      self._ScanVolumeScanNode(
+          scan_context, sub_scan_node, options, base_path_specs)
 
   def _ScanVolumeScanNode(
-      self, scan_context, volume_scan_node, base_path_specs):
+      self, scan_context, volume_scan_node, options, base_path_specs):
     """Scans an individual volume scan node for volume and file systems.
 
     Args:
       scan_context (SourceScannerContext): source scanner context.
       volume_scan_node (SourceScanNode): volume scan node.
+      options (VolumeScannerOptions): volume scanner options.
       base_path_specs (list[PathSpec]): file system base path specifications.
 
     Raises:
@@ -335,7 +382,8 @@ class VolumeScanner(object):
       self._ScanVolumeScanNodeAPFSContainer(scan_node, base_path_specs)
 
     elif scan_node.type_indicator == definitions.TYPE_INDICATOR_VSHADOW:
-      self._ScanVolumeScanNodeVSS(scan_node, base_path_specs)
+      if options.scan_vss:
+        self._ScanVolumeScanNodeVSS(scan_node, base_path_specs)
 
     elif scan_node.type_indicator in definitions.FILE_SYSTEM_TYPE_INDICATORS:
       self._ScanFileSystem(scan_node, base_path_specs)
@@ -344,7 +392,7 @@ class VolumeScanner(object):
         definitions.ENCRYPTED_VOLUME_TYPE_INDICATORS):
       self._source_scanner.Scan(
           scan_context, scan_path_spec=volume_scan_node.path_spec)
-      self._ScanVolume(scan_context, volume_scan_node, base_path_specs)
+      self._ScanVolume(scan_context, volume_scan_node, options, base_path_specs)
 
   def _ScanVolumeScanNodeAPFSContainer(self, volume_scan_node, base_path_specs):
     """Scans an APFS container scan node for volume and file systems.
@@ -444,11 +492,14 @@ class VolumeScanner(object):
       is_unlocked = self._mediator.UnlockEncryptedVolume(
           self._source_scanner, scan_context, volume_scan_node, credentials)
 
-  def GetBasePathSpecs(self, source_path):
+  def GetBasePathSpecs(self, source_path, options=None):
     """Determines the base path specifications.
 
     Args:
       source_path (str): source path.
+      options (Optional[VolumeScannerOptions]): volume scanner options. If None
+          the default volume scanner options are used, which are defined in the
+          VolumeScannerOptions class.
 
     Returns:
       list[PathSpec]: path specifications.
@@ -458,6 +509,9 @@ class VolumeScanner(object):
           is not a file or directory, or if the format of or within the source
           file is not supported.
     """
+    if not options:
+      options = VolumeScannerOptions()
+
     if not source_path:
       raise errors.ScannerError('Invalid source path.')
 
@@ -492,15 +546,16 @@ class VolumeScanner(object):
 
     base_path_specs = []
     if scan_node.type_indicator != definitions.TYPE_INDICATOR_TSK_PARTITION:
-      self._ScanVolume(scan_context, scan_node, base_path_specs)
+      self._ScanVolume(scan_context, scan_node, options, base_path_specs)
 
     else:
       # Determine which partition needs to be processed.
-      partition_identifiers = self._GetTSKPartitionIdentifiers(scan_node)
+      partition_identifiers = self._GetTSKPartitionIdentifiers(
+          scan_node, options)
       for partition_identifier in partition_identifiers:
         location = '/{0:s}'.format(partition_identifier)
         sub_scan_node = scan_node.GetSubNodeByLocation(location)
-        self._ScanVolume(scan_context, sub_scan_node, base_path_specs)
+        self._ScanVolume(scan_context, sub_scan_node, options, base_path_specs)
 
     return base_path_specs
 
