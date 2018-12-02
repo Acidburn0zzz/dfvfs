@@ -290,8 +290,8 @@ class CLIVolumeScannerMediatorTest(shared_test_lib.BaseTestCase):
     self.assertEqual(output_data.split(b'\n'), expected_output_data)
 
   @shared_test_lib.skipUnlessHasTestFile(['tsk_volume_system.raw'])
-  def testPrintTSKPartitionIdentifiersOverview(self):
-    """Tests the _PrintTSKPartitionIdentifiersOverview function."""
+  def testPrintPartitionIdentifiersOverview(self):
+    """Tests the _PrintPartitionIdentifiersOverview function."""
     test_path = self._GetTestFilePath(['tsk_volume_system.raw'])
     test_os_path_spec = path_spec_factory.Factory.NewPathSpec(
         definitions.TYPE_INDICATOR_OS, location=test_path)
@@ -309,7 +309,7 @@ class CLIVolumeScannerMediatorTest(shared_test_lib.BaseTestCase):
     test_mediator = command_line.CLIVolumeScannerMediator(
         output_writer=test_output_writer)
 
-    test_mediator._PrintTSKPartitionIdentifiersOverview(
+    test_mediator._PrintPartitionIdentifiersOverview(
         volume_system, ['p1', 'p2'])
 
     file_object.seek(0, os.SEEK_SET)

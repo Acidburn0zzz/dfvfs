@@ -497,7 +497,7 @@ class CLIVolumeScannerMediator(volume_scanner.VolumeScannerMediator):
     self._output_writer.Write('\n')
     table_view.Write(self._output_writer)
 
-  def _PrintTSKPartitionIdentifiersOverview(
+  def _PrintPartitionIdentifiersOverview(
       self, volume_system, volume_identifiers):
     """Prints an overview of TSK partition identifiers.
 
@@ -656,7 +656,7 @@ class CLIVolumeScannerMediator(volume_scanner.VolumeScannerMediator):
     print_header = True
     while True:
       if print_header:
-        self._PrintTSKPartitionIdentifiersOverview(
+        self._PrintPartitionIdentifiersOverview(
             volume_system, volume_identifiers)
 
         print_header = False

@@ -26,6 +26,7 @@ class VolumeScannerOptions(object):
     scan_vss (bool): True if VSS should be scanned.
     scan_vss_snapshots_only (bool): True if only snapshots of a VSS should be
         scanned and not the current volume.
+    vss_stores (list[str]): VSS store identifiers.
   """
 
   def __init__(self):
@@ -34,14 +35,7 @@ class VolumeScannerOptions(object):
     self.partitions = []
     self.scan_vss = True
     self.scan_vss_snapshots_only = False
-
-  def DoScanVSS(self):
-    """Determines if VSS needs to be scanned.
-
-    Returns:
-      bool: True if VSS needs to be scanned.
-    """
-    return self.scan_vss
+    self.vss_stores = []
 
 
 class VolumeScannerMediator(object):
@@ -169,10 +163,10 @@ class VolumeScanner(object):
     return self._NormalizedVolumeIdentifiers(
         volume_system, volume_identifiers, prefix='apfs')
 
-  def _GetTSKPartitionIdentifiers(self, scan_node, options):
-    """Determines the TSK partition identifiers.
+  def _GetPartitionIdentifiers(self, scan_node, options):
+    """Determines the partition identifiers.
 
-    This function determines which TSK partition identifiers need to be scanned
+    This function determines which partition identifiers need to be scanned
     based on the volume scanner options. If no options are provided and there
     is more than a single partition the mediator is used to ask the user.
 
@@ -181,7 +175,7 @@ class VolumeScanner(object):
       options (VolumeScannerOptions): volume scanner options.
 
     Returns:
-      list[str]: TSK partition identifiers.
+      list[str]: partition identifiers.
 
     Raises:
       ScannerError: if the format of or within the source is not supported or
@@ -230,11 +224,12 @@ class VolumeScanner(object):
     return self._NormalizedVolumeIdentifiers(
         volume_system, volume_identifiers, prefix='p')
 
-  def _GetVSSStoreIdentifiers(self, scan_node):
+  def _GetVSSStoreIdentifiers(self, scan_node, options):
     """Determines the VSS store identifiers.
 
     Args:
       scan_node (SourceScanNode): scan node.
+      options (VolumeScannerOptions): volume scanner options.
 
     Returns:
       list[str]: VSS store identifiers.
@@ -255,6 +250,18 @@ class VolumeScanner(object):
         volume_system)
     if not volume_identifiers:
       return []
+
+    if options.vss_stores:
+      if options.vss_stores == ['all']:
+        vss_stores = range(1, volume_system.number_of_volumes + 1)
+      else:
+        vss_stores = options.vss_stores
+
+      selected_volumes = self._NormalizedVolumeIdentifiers(
+          volume_system, vss_stores, prefix='vss')
+
+      if not set(selected_volumes).difference(volume_identifiers):
+        return selected_volumes
 
     if not self._mediator:
       raise errors.ScannerError(
@@ -383,7 +390,7 @@ class VolumeScanner(object):
 
     elif scan_node.type_indicator == definitions.TYPE_INDICATOR_VSHADOW:
       if options.scan_vss:
-        self._ScanVolumeScanNodeVSS(scan_node, base_path_specs)
+        self._ScanVolumeScanNodeVSS(scan_node, base_path_specs, options)
 
     elif scan_node.type_indicator in definitions.FILE_SYSTEM_TYPE_INDICATORS:
       self._ScanFileSystem(scan_node, base_path_specs)
@@ -431,12 +438,13 @@ class VolumeScanner(object):
 
       base_path_specs.append(path_spec)
 
-  def _ScanVolumeScanNodeVSS(self, volume_scan_node, base_path_specs):
+  def _ScanVolumeScanNodeVSS(self, volume_scan_node, base_path_specs, options):
     """Scans a VSS volume scan node for volume and file systems.
 
     Args:
       volume_scan_node (SourceScanNode): volume scan node.
       base_path_specs (list[PathSpec]): file system base path specifications.
+      options (VolumeScannerOptions): volume scanner options.
 
     Raises:
       ScannerError: if a VSS sub scan node scannot be retrieved or
@@ -449,7 +457,8 @@ class VolumeScanner(object):
     if not volume_scan_node.IsVolumeSystemRoot():
       return
 
-    vss_store_identifiers = self._GetVSSStoreIdentifiers(volume_scan_node)
+    vss_store_identifiers = self._GetVSSStoreIdentifiers(
+        volume_scan_node, options)
 
     # Process VSS stores starting with the most recent one.
     vss_store_identifiers.reverse()
@@ -550,7 +559,7 @@ class VolumeScanner(object):
 
     else:
       # Determine which partition needs to be processed.
-      partition_identifiers = self._GetTSKPartitionIdentifiers(
+      partition_identifiers = self._GetPartitionIdentifiers(
           scan_node, options)
       for partition_identifier in partition_identifiers:
         location = '/{0:s}'.format(partition_identifier)
