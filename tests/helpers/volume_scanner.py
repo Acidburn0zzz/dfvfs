@@ -580,7 +580,7 @@ class VolumeScannerTest(shared_test_lib.BaseTestCase):
 
     base_path_specs = []
     test_scanner._ScanVolumeScanNodeVSS(
-        volume_scan_node, base_path_specs, test_options)
+        volume_scan_node, test_options, base_path_specs)
     self.assertEqual(len(base_path_specs), 0)
 
     # Test function on VSS volume.
@@ -593,16 +593,16 @@ class VolumeScannerTest(shared_test_lib.BaseTestCase):
 
     base_path_specs = []
     test_scanner._ScanVolumeScanNodeVSS(
-        volume_scan_node.sub_nodes[0], base_path_specs, test_options)
+        volume_scan_node.sub_nodes[0], test_options, base_path_specs)
     self.assertEqual(len(base_path_specs), 2)
 
     # Test error conditions.
     with self.assertRaises(errors.ScannerError):
-      test_scanner._ScanVolumeScanNodeVSS(None, [], test_options)
+      test_scanner._ScanVolumeScanNodeVSS(None, test_options, [])
 
     volume_scan_node = source_scanner.SourceScanNode(None)
     with self.assertRaises(errors.ScannerError):
-      test_scanner._ScanVolumeScanNodeVSS(volume_scan_node, [], test_options)
+      test_scanner._ScanVolumeScanNodeVSS(volume_scan_node, test_options, [])
 
   # TODO: add tests for _UnlockEncryptedVolumeScanNode
 
