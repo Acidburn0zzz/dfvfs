@@ -23,19 +23,29 @@ class VolumeScannerOptions(object):
 
   Attribute:
     partitions (list[str]): partition identifiers.
-    scan_vss (bool): True if VSS should be scanned.
-    scan_vss_snapshots_only (bool): True if only snapshots of a VSS should be
-        scanned and not the current volume.
-    vss_stores (list[str]): VSS store identifiers.
+    scan_mode (str): mode that defines how the VolumeScanner should scan
+        for volumes and snapshots.
+    volumes (list[str]): volume identifiers, e.g. those of an APFS or LVM
+        volume system.
   """
+
+  # Scan all volumes and snapshots for available file systems.
+  SCAN_MODE_ALL = 'all'
+
+  # Scan all volumes and snapshots for available file systems, but if a volume
+  # system with snapshots is found, only scan snapshots not the current volume.
+  SCAN_MODE_SNAPSHOTS_ONLY = 'snapshots-only'
+
+  # Only scan volumes for available file systems. Do not scan snapshots.
+  SCAN_MODE_VOLUMES_ONLY = 'volumes-only'
 
   def __init__(self):
     """Initializes volume scanner options."""
     super(VolumeScannerOptions, self).__init__()
     self.partitions = []
-    self.scan_vss = True
-    self.scan_vss_snapshots_only = False
-    self.vss_stores = []
+    self.scan_mode = self.SCAN_MODE_ALL
+    self.snapshots = []
+    self.volumes = []
 
 
 class VolumeScannerMediator(object):
@@ -123,11 +133,12 @@ class VolumeScanner(object):
     self._source_scanner = source_scanner.SourceScanner()
     self._source_type = None
 
-  def _GetAPFSVolumeIdentifiers(self, scan_node):
+  def _GetAPFSVolumeIdentifiers(self, scan_node, options):
     """Determines the APFS volume identifiers.
 
     Args:
       scan_node (SourceScanNode): scan node.
+      options (VolumeScannerOptions): volume scanner options.
 
     Returns:
       list[str]: APFS volume identifiers.
@@ -147,6 +158,18 @@ class VolumeScanner(object):
         volume_system)
     if not volume_identifiers:
       return []
+
+    if options.volumes:
+      if options.volumes == 'all':
+        volumes = range(1, volume_system.number_of_volumes + 1)
+      else:
+        volumes = options.volumes
+
+      selected_volumes = self._NormalizedVolumeIdentifiers(
+          volume_system, volumes, prefix='apfs')
+
+      if not set(selected_volumes).difference(volume_identifiers):
+        return selected_volumes
 
     if len(volume_identifiers) > 1:
       if not self._mediator:
@@ -195,7 +218,7 @@ class VolumeScanner(object):
       return []
 
     if options.partitions:
-      if options.partitions == ['all']:
+      if options.partitions == 'all':
         partitions = range(1, volume_system.number_of_volumes + 1)
       else:
         partitions = options.partitions
@@ -206,20 +229,18 @@ class VolumeScanner(object):
       if not set(selected_volumes).difference(volume_identifiers):
         return selected_volumes
 
-    if len(volume_identifiers) == 1:
-      return volume_identifiers
+    if len(volume_identifiers) > 1:
+      if not self._mediator:
+        raise errors.ScannerError(
+            'Unable to proceed. More than one partitions found but no mediator '
+            'to determine how they should be used.')
 
-    if not self._mediator:
-      raise errors.ScannerError(
-          'Unable to proceed. More than one partitions found but no mediator '
-          'to determine how they should be used.')
+      try:
+        volume_identifiers = self._mediator.GetPartitionIdentifiers(
+            volume_system, volume_identifiers)
 
-    try:
-      volume_identifiers = self._mediator.GetPartitionIdentifiers(
-          volume_system, volume_identifiers)
-
-    except KeyboardInterrupt:
-      raise errors.UserAbort('File system scan aborted.')
+      except KeyboardInterrupt:
+        raise errors.UserAbort('File system scan aborted.')
 
     return self._NormalizedVolumeIdentifiers(
         volume_system, volume_identifiers, prefix='p')
@@ -251,14 +272,14 @@ class VolumeScanner(object):
     if not volume_identifiers:
       return []
 
-    if options.vss_stores:
-      if options.vss_stores == ['all']:
-        vss_stores = range(1, volume_system.number_of_volumes + 1)
+    if options.snapshots:
+      if options.snapshots == 'all':
+        snapshots = range(1, volume_system.number_of_volumes + 1)
       else:
-        vss_stores = options.vss_stores
+        snapshots = options.snapshots
 
       selected_volumes = self._NormalizedVolumeIdentifiers(
-          volume_system, vss_stores, prefix='vss')
+          volume_system, snapshots, prefix='vss')
 
       if not set(selected_volumes).difference(volume_identifiers):
         return selected_volumes
@@ -299,6 +320,13 @@ class VolumeScanner(object):
     for volume_identifier in volume_identifiers:
       if isinstance(volume_identifier, int):
         volume_identifier = '{0:s}{1:d}'.format(prefix, volume_identifier)
+
+      elif not volume_identifier.startswith(prefix):
+        try:
+          volume_identifier = int(volume_identifier, 10)
+          volume_identifier = '{0:s}{1:d}'.format(prefix, volume_identifier)
+        except (TypeError, ValueError):
+          pass
 
       try:
         volume = volume_system.GetVolumeByIdentifier(volume_identifier)
@@ -386,11 +414,13 @@ class VolumeScanner(object):
       self._UnlockEncryptedVolumeScanNode(scan_context, scan_node)
 
     if scan_node.type_indicator == definitions.TYPE_INDICATOR_APFS_CONTAINER:
-      self._ScanVolumeScanNodeAPFSContainer(scan_node, base_path_specs)
+      self._ScanVolumeScanNodeAPFSContainer(
+          scan_node, options, base_path_specs)
 
     elif scan_node.type_indicator == definitions.TYPE_INDICATOR_VSHADOW:
-      if options.scan_vss:
-        self._ScanVolumeScanNodeVSS(scan_node, base_path_specs, options)
+      if options.scan_mode in (
+          options.SCAN_MODE_ALL, options.SCAN_MODE_SNAPSHOTS_ONLY):
+        self._ScanVolumeScanNodeVSS(scan_node, options, base_path_specs)
 
     elif scan_node.type_indicator in definitions.FILE_SYSTEM_TYPE_INDICATORS:
       self._ScanFileSystem(scan_node, base_path_specs)
@@ -401,11 +431,13 @@ class VolumeScanner(object):
           scan_context, scan_path_spec=volume_scan_node.path_spec)
       self._ScanVolume(scan_context, volume_scan_node, options, base_path_specs)
 
-  def _ScanVolumeScanNodeAPFSContainer(self, volume_scan_node, base_path_specs):
+  def _ScanVolumeScanNodeAPFSContainer(
+      self, volume_scan_node, options, base_path_specs):
     """Scans an APFS container scan node for volume and file systems.
 
     Args:
       volume_scan_node (SourceScanNode): volume scan node.
+      options (VolumeScannerOptions): volume scanner options.
       base_path_specs (list[PathSpec]): file system base path specifications.
 
     Raises:
@@ -415,7 +447,8 @@ class VolumeScanner(object):
     if not volume_scan_node.IsVolumeSystemRoot():
       return
 
-    volume_identifiers = self._GetAPFSVolumeIdentifiers(volume_scan_node)
+    volume_identifiers = self._GetAPFSVolumeIdentifiers(
+        volume_scan_node, options)
 
     for volume_identifier in volume_identifiers:
       location = '/{0:s}'.format(volume_identifier)
@@ -438,13 +471,13 @@ class VolumeScanner(object):
 
       base_path_specs.append(path_spec)
 
-  def _ScanVolumeScanNodeVSS(self, volume_scan_node, base_path_specs, options):
+  def _ScanVolumeScanNodeVSS(self, volume_scan_node, options, base_path_specs):
     """Scans a VSS volume scan node for volume and file systems.
 
     Args:
       volume_scan_node (SourceScanNode): volume scan node.
-      base_path_specs (list[PathSpec]): file system base path specifications.
       options (VolumeScannerOptions): volume scanner options.
+      base_path_specs (list[PathSpec]): file system base path specifications.
 
     Raises:
       ScannerError: if a VSS sub scan node scannot be retrieved or

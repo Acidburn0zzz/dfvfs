@@ -253,10 +253,14 @@ class VolumeScannerTest(shared_test_lib.BaseTestCase):
         volume_system, [1, 2], prefix='p')
     self.assertEqual(volume_identifiers, ['p1', 'p2'])
 
+    volume_identifiers = test_scanner._NormalizedVolumeIdentifiers(
+        volume_system, ['1', '2'], prefix='p')
+    self.assertEqual(volume_identifiers, ['p1', 'p2'])
+
     # Test error conditions.
     with self.assertRaises(errors.ScannerError):
       test_scanner._NormalizedVolumeIdentifiers(
-          volume_system, ['p3'], prefix='p')
+          volume_system, ['bogus'], prefix='p')
 
   @shared_test_lib.skipUnlessHasTestFile(['vsstest.qcow2'])
   def testNormalizedVolumeIdentifiersVSS(self):
@@ -429,12 +433,20 @@ class VolumeScannerTest(shared_test_lib.BaseTestCase):
     self.assertEqual(len(base_path_specs), 3)
 
     # Test without scanning snapshots.
-    test_options.scan_vss = False
+    test_options.scan_mode = test_options.SCAN_MODE_VOLUMES_ONLY
 
     base_path_specs = []
     test_scanner._ScanVolume(
         scan_context, volume_scan_node, test_options, base_path_specs)
     self.assertEqual(len(base_path_specs), 1)
+
+    # Test without scanning current volumes.
+    test_options.scan_mode = test_options.SCAN_MODE_SNAPSHOTS_ONLY
+
+    base_path_specs = []
+    test_scanner._ScanVolume(
+        scan_context, volume_scan_node, test_options, base_path_specs)
+    self.assertEqual(len(base_path_specs), 2)
 
   def testScanVolumeScanNode(self):
     """Tests the _ScanVolumeScanNode function."""
