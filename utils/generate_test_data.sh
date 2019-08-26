@@ -36,7 +36,7 @@ EOT
 This is another file.
 EOT
 
-	ls -s ${MOUNT_POINT}/a_directory/another_file ${MOUNT_POINT}/a_link;
+	ln -s ${MOUNT_POINT}/a_directory/another_file ${MOUNT_POINT}/a_link;
 }
 
 mkdir -p test_data;
