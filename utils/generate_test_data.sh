@@ -18,13 +18,13 @@ create_test_file_entries()
 	# Create a directory
 	mkdir ${MOUNT_POINT}/a_directory;
 
-	cat ${MOUNT_POINT}/a_directory/a_file <<EOT
+	cat >${MOUNT_POINT}/a_directory/a_file <<EOT
 This is a text file.
 
 We should be able to parse it.
 EOT
 
-	cat ${MOUNT_POINT}/passwords.txt <<EOT
+	cat >${MOUNT_POINT}/passwords.txt <<EOT
 place,user,password
 bank,joesmith,superrich
 alarm system,-,1234
@@ -32,7 +32,7 @@ treasure chest,-,1111
 uber secret laire,admin,admin
 EOT
 
-	cat ${MOUNT_POINT}/a_directory/another_file <<EOT
+	cat >${MOUNT_POINT}/a_directory/another_file <<EOT
 This is another file.
 EOT
 
