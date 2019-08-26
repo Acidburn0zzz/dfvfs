@@ -55,9 +55,9 @@ dd if=/dev/zero of=${IMAGE_FILE} bs=${SECTOR_SIZE} count=$(( ${IMAGE_SIZE} / ${S
 
 mkntfs -F -q -L "ntfs_test" -s ${SECTOR_SIZE} ${IMAGE_FILE};
 
-sudo mount -o loop,rw ${IMAGE_FILE} /mnt/ntfs;
+sudo mount -o loop,rw ${IMAGE_FILE} ${MOUNT_POINT};
 
 create_test_file_entries ${MOUNT_POINT};
 
-sudo umount /mnt/ntfs;
+sudo umount ${MOUNT_POINT};
 
